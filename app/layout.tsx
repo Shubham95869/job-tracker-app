@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Job Tracker",
-  description: "Track your job applications",
+  title: "Job Application Tracker",
+  description: "Track and manage your job applications",
 };
 
 export default function RootLayout({
@@ -24,12 +24,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" >
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        
         <Navbar />
         {children}
+
       </body>
     </html>
   );

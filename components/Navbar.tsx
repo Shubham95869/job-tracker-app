@@ -33,6 +33,7 @@ export default function Navbar() {
 
         {/* Desktop nav — hidden below md */}
         <div className="hidden md:flex items-center gap-4">
+            
           {session?.user ? (
             <>
               <Link href="/dashboard">
