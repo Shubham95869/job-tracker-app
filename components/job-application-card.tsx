@@ -53,7 +53,7 @@ export default function JobApplicationCard({
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const result = await updateJobApplication(job._id, {
+      const result = await updateJobApplication(job.id, {
         ...formData,
         tags: formData.tags
           .split(",")
@@ -71,7 +71,7 @@ export default function JobApplicationCard({
 
   async function handleDelete() {
     try {
-      const result = await deleteJobApplication(job._id);
+      const result = await deleteJobApplication(job.id);
 
       if (result.error) {
         console.error("Failed to delete job application:", result.error);
@@ -83,7 +83,7 @@ export default function JobApplicationCard({
 
   async function handleMove(newColumnId: string) {
     try {
-      const result = await updateJobApplication(job._id, {
+      const result = await updateJobApplication(job.id, {
         columnId: newColumnId,
       });
     } catch (err) {
@@ -146,11 +146,11 @@ export default function JobApplicationCard({
                   {columns.length > 1 && (
                     <>
                       {columns
-                        .filter((c) => c._id !== job.columnId)
+                        .filter((c) => c.id !== job.columnId)
                         .map((column, key) => (
                           <DropdownMenuItem
                             key={key}
-                            onClick={() => handleMove(column._id)}
+                            onClick={() => handleMove(column.id)}
                           >
                             Move to {column.name}
                           </DropdownMenuItem>

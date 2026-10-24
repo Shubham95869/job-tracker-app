@@ -1,0 +1,140 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Better Auth models
+
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+  boards   Board[]
+
+  @@map("user")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  accountId         String
+  providerId        String
+  accessToken       String?
+  refreshToken      String?
+  idToken           String?
+  accessTokenExpiresAt DateTime?
+  refreshTokenExpiresAt DateTime?
+  password          String?
+  scope             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, providerId, accountId])
+  @@map("account")
+  @@index([userId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  userId    String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([identifier, value])
+  @@map("verification")
+  @@index([identifier])
+}
+
+// Application models
+
+model Board {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  columns         Column[]
+  jobApplications JobApplication[] @relation("BoardJobApplications")
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("board")
+}
+
+model Column {
+  id              String           @id @default(cuid())
+  name            String
+  boardId         String
+  order           Int              @default(0)
+  jobApplications JobApplication[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId])
+  @@map("column")
+}
+
+model JobApplication {
+  id          String    @id @default(cuid())
+  company     String
+  position    String
+  location    String?
+  status      String    @default("applied")
+  columnId    String
+  boardId     String
+  userId      String
+  order       Int       @default(0)
+  notes       String?   @db.Text
+  salary      String?
+  jobUrl      String?
+  appliedDate DateTime?
+  tags        String[]
+  description String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  column Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  board  Board  @relation("BoardJobApplications", fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([columnId])
+  @@index([boardId])
+  @@index([userId])
+  @@map("job_application")
+}

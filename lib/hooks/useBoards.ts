@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Board, Column, JobApplication } from "../models/models.types";
+import { Board, Column, JobApplication, BoardOrNull } from "../models/models.types";
 import { updateJobApplication } from "../actions/job-applications";
 
-export function useBoard(initialBoard?: Board | null) {
-  const [board, setBoard] = useState<Board | null>(initialBoard || null);
+export function useBoard(initialBoard?: BoardOrNull) {
+  const [board, setBoard] = useState<BoardOrNull>(initialBoard || null);
   const [columns, setColumns] = useState<Column[]>(initialBoard?.columns || []);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,13 +34,13 @@ export function useBoard(initialBoard?: Board | null) {
 
       for (const col of newColumns) {
         const jobIndex = col.jobApplications.findIndex(
-          (j) => j._id === jobApplicationId
+          (j) => j.id === jobApplicationId
         );
         if (jobIndex !== -1 && jobIndex !== undefined) {
           jobToMove = col.jobApplications[jobIndex];
-          oldColumnId = col._id;
+          oldColumnId = col.id;
           col.jobApplications = col.jobApplications.filter(
-            (job) => job._id !== jobApplicationId
+            (job) => job.id !== jobApplicationId
           );
           break;
         }
@@ -48,7 +48,7 @@ export function useBoard(initialBoard?: Board | null) {
 
       if (jobToMove && oldColumnId) {
         const targetColumnIndex = newColumns.findIndex(
-          (col) => col._id === newColumnId
+          (col) => col.id === newColumnId
         );
         if (targetColumnIndex !== -1) {
           const targetColumn = newColumns[targetColumnIndex];

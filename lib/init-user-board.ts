@@ -1,5 +1,4 @@
-import connectDB from "./db";
-import { Board, Column } from "./models";
+import { prisma } from "./prisma";
 
 const DEFAULT_COLUMNS = [
   {
@@ -14,37 +13,36 @@ const DEFAULT_COLUMNS = [
 
 export async function initializeUserBoard(userId: string) {
   try {
-    await connectDB();
-
     // Check if board already exists
-    const existingBoard = await Board.findOne({ userId, name: "Job Hunt" });
+    const existingBoard = await prisma.board.findUnique({
+      where: {
+        userId_name: {
+          userId,
+          name: "Job Hunt",
+        },
+      },
+    });
 
     if (existingBoard) {
       return existingBoard;
     }
 
-    // Create the board
-    const board = await Board.create({
-      name: "Job Hunt",
-      userId,
-      columns: [],
+    // Create the board with columns in a transaction
+    const board = await prisma.board.create({
+      data: {
+        name: "Job Hunt",
+        userId,
+        columns: {
+          create: DEFAULT_COLUMNS.map((col) => ({
+            name: col.name,
+            order: col.order,
+          })),
+        },
+      },
+      include: {
+        columns: true,
+      },
     });
-
-    // Create default columns
-    const columns = await Promise.all(
-      DEFAULT_COLUMNS.map((col) =>
-        Column.create({
-          name: col.name,
-          order: col.order,
-          boardId: board._id,
-          jobApplication: [],
-        })
-      )
-    );
-
-    // Update the board with the new column IDs
-    board.columns = columns.map((col) => col._id);
-    await board.save();
 
     return board;
   } catch (err) {

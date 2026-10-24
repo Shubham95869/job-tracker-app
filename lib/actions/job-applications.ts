@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "../auth/auth";
-import connectDB from "../db";
-import { Board, Column, JobApplication } from "../models";
+import { prisma } from "../prisma";
 
 interface JobApplicationData {
   company: string;
@@ -25,8 +24,6 @@ export async function createJobApplication(data: JobApplicationData) {
     return { error: "Unauthorized" };
   }
 
-  await connectDB();
-
   const {
     company,
     position,
@@ -45,9 +42,11 @@ export async function createJobApplication(data: JobApplicationData) {
   }
 
   // Verify board ownership
-  const board = await Board.findOne({
-    _id: boardId,
-    userId: session.user.id,
+  const board = await prisma.board.findUnique({
+    where: {
+      id: boardId,
+      userId: session.user.id,
+    },
   });
 
   if (!board) {
@@ -55,44 +54,45 @@ export async function createJobApplication(data: JobApplicationData) {
   }
 
   // Verify column belongs to board
-
-  const column = await Column.findOne({
-    _id: columnId,
-    boardId: boardId,
+  const column = await prisma.column.findUnique({
+    where: {
+      id: columnId,
+      boardId: boardId,
+    },
   });
 
   if (!column) {
     return { error: "Column not found" };
   }
 
-  const maxOrder = (await JobApplication.findOne({ columnId })
-    .sort({ order: -1 })
-    .select("order")
-    .lean()) as { order: number } | null;
-
-  const jobApplication = await JobApplication.create({
-    company,
-    position,
-    location,
-    notes,
-    salary,
-    jobUrl,
-    columnId,
-    boardId,
-    userId: session.user.id,
-    tags: tags || [],
-    description,
-    status: "applied",
-    order: maxOrder ? maxOrder.order + 1 : 0,
+  // Get max order in column
+  const maxOrder = await prisma.jobApplication.findFirst({
+    where: { columnId },
+    orderBy: { order: 'desc' },
+    select: { order: true },
   });
 
-  await Column.findByIdAndUpdate(columnId, {
-    $push: { jobApplications: jobApplication._id },
+  const jobApplication = await prisma.jobApplication.create({
+    data: {
+      company,
+      position,
+      location,
+      notes,
+      salary,
+      jobUrl,
+      columnId,
+      boardId,
+      userId: session.user.id,
+      tags: tags || [],
+      description,
+      status: "applied",
+      order: (maxOrder?.order ?? -1) + 1,
+    },
   });
 
   revalidatePath("/dashboard");
 
-  return { data: JSON.parse(JSON.stringify(jobApplication)) };
+  return { data: jobApplication };
 }
 
 export async function updateJobApplication(
@@ -116,7 +116,9 @@ export async function updateJobApplication(
     return { error: "Unauthorized" };
   }
 
-  const jobApplication = await JobApplication.findById(id);
+  const jobApplication = await prisma.jobApplication.findUnique({
+    where: { id },
+  });
 
   if (!jobApplication) {
     return { error: "Job application not found" };
@@ -141,23 +143,20 @@ export async function updateJobApplication(
     description: string;
   }> = otherUpdates;
 
-  const currentColumnId = jobApplication.columnId.toString();
-  const newColumnId = columnId?.toString();
+  const currentColumnId = jobApplication.columnId;
+  const newColumnId = columnId;
 
   const isMovingToDifferentColumn =
     newColumnId && newColumnId !== currentColumnId;
 
   if (isMovingToDifferentColumn) {
-    await Column.findByIdAndUpdate(currentColumnId, {
-      $pull: { jobApplications: id },
+    const jobsInTargetColumn = await prisma.jobApplication.findMany({
+      where: {
+        columnId: newColumnId,
+        id: { not: id },
+      },
+      orderBy: { order: 'asc' },
     });
-
-    const jobsInTargetColumn = await JobApplication.find({
-      columnId: newColumnId,
-      _id: { $ne: id },
-    })
-      .sort({ order: 1 })
-      .lean();
 
     let newOrderValue: number;
 
@@ -166,8 +165,9 @@ export async function updateJobApplication(
 
       const jobsThatNeedToShift = jobsInTargetColumn.slice(order);
       for (const job of jobsThatNeedToShift) {
-        await JobApplication.findByIdAndUpdate(job._id, {
-          $set: { order: job.order + 100 },
+        await prisma.jobApplication.update({
+          where: { id: job.id },
+          data: { order: job.order + 100 },
         });
       }
     } else {
@@ -182,17 +182,14 @@ export async function updateJobApplication(
 
     updatesToApply.columnId = newColumnId;
     updatesToApply.order = newOrderValue;
-
-    await Column.findByIdAndUpdate(newColumnId, {
-      $push: { jobApplications: id },
-    });
   } else if (order !== undefined && order !== null) {
-    const otherJobsInColumn = await JobApplication.find({
-      columnId: currentColumnId,
-      _id: { $ne: id },
-    })
-      .sort({ order: 1 })
-      .lean();
+    const otherJobsInColumn = await prisma.jobApplication.findMany({
+      where: {
+        columnId: currentColumnId,
+        id: { not: id },
+      },
+      orderBy: { order: 'asc' },
+    });
 
     const currentJobOrder = jobApplication.order || 0;
     const currentPositionIndex = otherJobsInColumn.findIndex(
@@ -209,16 +206,18 @@ export async function updateJobApplication(
       const jobsToShiftDown = otherJobsInColumn.slice(order, oldPositionindex);
 
       for (const job of jobsToShiftDown) {
-        await JobApplication.findByIdAndUpdate(job._id, {
-          $set: { order: job.order + 100 },
+        await prisma.jobApplication.update({
+          where: { id: job.id },
+          data: { order: job.order + 100 },
         });
       }
     } else if (order > oldPositionindex) {
       const jobsToShiftUp = otherJobsInColumn.slice(oldPositionindex, order);
       for (const job of jobsToShiftUp) {
         const newOrder = Math.max(0, job.order - 100);
-        await JobApplication.findByIdAndUpdate(job._id, {
-          $set: { order: newOrder },
+        await prisma.jobApplication.update({
+          where: { id: job.id },
+          data: { order: newOrder },
         });
       }
     }
@@ -226,13 +225,14 @@ export async function updateJobApplication(
     updatesToApply.order = newOrderValue;
   }
 
-  const updated = await JobApplication.findByIdAndUpdate(id, updatesToApply, {
-    new: true,
+  const updated = await prisma.jobApplication.update({
+    where: { id },
+    data: updatesToApply,
   });
 
   revalidatePath("/dashboard");
 
-  return { data: JSON.parse(JSON.stringify(updated)) };
+  return { data: updated };
 }
 
 export async function deleteJobApplication(id: string) {
@@ -242,7 +242,9 @@ export async function deleteJobApplication(id: string) {
     return { error: "Unauthorized" };
   }
 
-  const jobApplication = await JobApplication.findById(id);
+  const jobApplication = await prisma.jobApplication.findUnique({
+    where: { id },
+  });
 
   if (!jobApplication) {
     return { error: "Job application not found" };
@@ -252,11 +254,10 @@ export async function deleteJobApplication(id: string) {
     return { error: "Unauthorized" };
   }
 
-  await Column.findByIdAndUpdate(jobApplication.columnId, {
-    $pull: { jobApplications: id },
+  await prisma.jobApplication.delete({
+    where: { id },
   });
 
-  await JobApplication.deleteOne({ _id: id });
   revalidatePath("/dashboard");
 
   return { success: true };

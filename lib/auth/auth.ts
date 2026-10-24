@@ -1,17 +1,13 @@
 import { betterAuth } from "better-auth";
-import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { prismaAdapter } from "better-auth/adapters/prisma";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { initializeUserBoard } from "../init-user-board";
-import connectDB from "../db";
-
-const mongooseInstance = await connectDB();
-const client = mongooseInstance.connection.getClient();
-const db = client.db();
+import { prisma } from "../prisma";
 
 export const auth = betterAuth({
-  database: mongodbAdapter(db, {
-    client,
+  database: prismaAdapter(prisma, {
+    provider: "postgresql",
   }),
   session: {
     cookieCache: {

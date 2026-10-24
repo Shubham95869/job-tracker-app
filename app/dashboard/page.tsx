@@ -1,6 +1,5 @@
 import { getSession } from "@/lib/auth/auth";
-import connectDB from "@/lib/db";
-import { Board } from "@/lib/models";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import KanbanBoard from "@/components/kanban-board";
 import { Suspense } from "react";
@@ -9,28 +8,31 @@ import { KanbanSkeleton } from "@/components/kanban-skeleton";
 async function getBoard(userId: string) {
   "use cache";
 
-  await connectDB();
-
-  const boardDoc = await Board.findOne({
-    userId: userId,
-    name: "Job Hunt",
-  }).populate({
-    path: "columns",
-    populate: {
-      path: "jobApplications",
+  const board = await prisma.board.findUnique({
+    where: {
+      userId_name: {
+        userId,
+        name: "Job Hunt",
+      },
+    },
+    include: {
+      columns: {
+        orderBy: { order: 'asc' },
+        include: {
+          jobApplications: {
+            orderBy: { order: 'asc' },
+          },
+        },
+      },
     },
   });
-
-  if (!boardDoc) return null;
-
-  const board = JSON.parse(JSON.stringify(boardDoc));
 
   return board;
 }
 
 async function DashboardPage() {
   const session = await getSession();
-  
+
   if (!session?.user) {
     redirect("/sign-in");
   }
