@@ -8,43 +8,37 @@ export default function ImageTabs() {
   const [activeTab, setActiveTab] = useState("organize"); // organize, hired, boards
 
   return (
-    <section className="border-t bg-white py-16">
+    <section className="border-t border-border bg-background py-16">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-6xl">
           {/* Tabs */}
-          <div className="flex gap-2 justify-center mb-8">
+          <div className="mb-8 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <Button
               onClick={() => setActiveTab("organize")}
-              className={`rounded-lg px-6 py-3 text-sm font-medium transition-colors ${
-                activeTab === "organize"
-                  ? "bg-primary text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              variant={activeTab === "organize" ? "default" : "secondary"}
+              className="h-auto w-full whitespace-normal px-3 py-3 text-sm"
+              aria-pressed={activeTab === "organize"}
             >
               Organize Applications
             </Button>
             <Button
               onClick={() => setActiveTab("hired")}
-              className={`rounded-lg px-6 py-3 text-sm font-medium transition-colors ${
-                activeTab === "hired"
-                  ? "bg-primary text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              variant={activeTab === "hired" ? "default" : "secondary"}
+              className="h-auto w-full whitespace-normal px-3 py-3 text-sm"
+              aria-pressed={activeTab === "hired"}
             >
               Get Hired
             </Button>
             <Button
               onClick={() => setActiveTab("boards")}
-              className={`rounded-lg px-6 py-3 text-sm font-medium transition-colors ${
-                activeTab === "boards"
-                  ? "bg-primary text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              variant={activeTab === "boards" ? "default" : "secondary"}
+              className="h-auto w-full whitespace-normal px-3 py-3 text-sm"
+              aria-pressed={activeTab === "boards"}
             >
               Manage Boards
             </Button>
           </div>
-          <div className="relative mx-auto max-w-5xl overflow-hidden rounded-lg border border-gray-200 shadow-xl">
+          <div className="relative mx-auto max-w-5xl overflow-hidden rounded-lg border border-border shadow-xl">
             {activeTab === "organize" && (
               <Image
                 src="/hero-images/hero1.png"
@@ -57,7 +51,7 @@ export default function ImageTabs() {
             {activeTab === "hired" && (
               <Image
                 src="/hero-images/hero2.png"
-                alt="Organize Applications"
+                alt="Job applications organized in Kanban columns"
                 width={1200}
                 height={800}
               />
@@ -66,7 +60,7 @@ export default function ImageTabs() {
             {activeTab === "boards" && (
               <Image
                 src="/hero-images/hero3.png"
-                alt="Organize Applications"
+                alt="Add job application dialog with structured fields"
                 width={1200}
                 height={800}
               />

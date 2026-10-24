@@ -2,7 +2,7 @@
 
 import { JobApplication, Column } from "@/lib/models/models.types";
 import { Card, CardContent } from "./ui/card";
-import { Edit2, ExternalLink, MoreVertical, Plus, Trash2 } from "lucide-react";
+import { Edit2, ExternalLink, MoreVertical, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +38,14 @@ export default function JobApplicationCard({
   dragHandleProps,
 }: JobApplicationCardProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [showNotes, setShowNotes] = useState(false);
+  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const getFormData = () => ({
     company: job.company,
     position: job.position,
     location: job.location || "",
@@ -49,9 +56,13 @@ export default function JobApplicationCard({
     tags: job.tags?.join(", ") || "",
     description: job.description || "",
   });
+  const [formData, setFormData] = useState(getFormData);
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
+    setLoading(true);
+
     try {
       const result = await updateJobApplication(job.id, {
         ...formData,
@@ -63,21 +74,31 @@ export default function JobApplicationCard({
 
       if (!result.error) {
         setIsEditing(false);
+      } else {
+        setError(result.error || "Failed to update job application");
       }
-    } catch (err) {
-      console.error("Failed to move job application: ", err);
+    } catch {
+      setError("An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleDelete() {
+    setIsDeleting(true);
+    setDeleteError("");
     try {
       const result = await deleteJobApplication(job.id);
 
       if (result.error) {
-        console.error("Failed to delete job application:", result.error);
+        setDeleteError(result.error);
+      } else {
+        setIsDeleteConfirmOpen(false);
       }
-    } catch (err) {
-      console.error("Failed to move job application: ", err);
+    } catch {
+      setDeleteError("Could not delete this application. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -86,20 +107,26 @@ export default function JobApplicationCard({
       const result = await updateJobApplication(job.id, {
         columnId: newColumnId,
       });
-    } catch (err) {
-      console.error("Failed to move job application: ", err);
+      if (result.error) setActionError(result.error);
+    } catch {
+      setActionError("Could not move this application. Please try again.");
     }
   }
   return (
     <>
       <Card
-        className="cursor-pointer transition-shadow hover:shadow-lg bg-white group shadow-sm"
+        className="group cursor-pointer shadow-sm transition-shadow hover:shadow-lg"
         {...dragHandleProps}
       >
         <CardContent className="p-4">
+          {actionError && (
+            <p role="alert" className="mb-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive">
+              {actionError}
+            </p>
+          )}
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm mb-1">{job.position}</h3>
+              <h3 className="mb-1 break-words text-sm font-semibold">{job.position}</h3>
               <p className="text-xs text-muted-foreground mb-2">
                 {job.company}
               </p>
@@ -113,7 +140,7 @@ export default function JobApplicationCard({
                   {job.tags.map((tag, index) => (
                     <span
                       key={index}
-                      className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                      className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-foreground"
                     >
                       {tag}
                     </span>
@@ -124,17 +151,39 @@ export default function JobApplicationCard({
                 <a
                   href={job.jobUrl}
                   target="_blank"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+                  rel="noreferrer"
+                  aria-label={`Open job listing for ${job.position} at ${job.company}`}
+                  className="mt-1 inline-flex min-h-9 items-center gap-1 text-xs text-primary hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <ExternalLink className="h-3 w-3" />
+                  <span>View listing</span>
                 </a>
+              )}
+              {job.notes && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowNotes(!showNotes);
+                  }}
+                  type="button"
+                  aria-expanded={showNotes}
+                  aria-controls={`job-notes-${job.id}`}
+                  className="mt-1 inline-flex min-h-9 items-center gap-1 px-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  {showNotes ? "Hide Notes" : "Show Notes"}
+                </button>
               )}
             </div>
             <div className="flex items-start gap-1">
               <DropdownMenu>
                 <DropdownMenuTrigger>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9"
+                      aria-label={`Actions for ${job.position} at ${job.company}`}
+                    >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -147,9 +196,9 @@ export default function JobApplicationCard({
                     <>
                       {columns
                         .filter((c) => c.id !== job.columnId)
-                        .map((column, key) => (
+                        .map((column) => (
                           <DropdownMenuItem
-                            key={key}
+                            key={column.id}
                             onClick={() => handleMove(column.id)}
                           >
                             Move to {column.name}
@@ -159,7 +208,7 @@ export default function JobApplicationCard({
                   )}
                   <DropdownMenuItem
                     className="text-destructive"
-                    onClick={() => handleDelete()}
+                    onClick={() => setIsDeleteConfirmOpen(true)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
@@ -169,17 +218,41 @@ export default function JobApplicationCard({
             </div>
           </div>
         </CardContent>
+        {showNotes && job.notes && (
+          <div className="px-4 pb-4 pt-0">
+            <div
+              id={`job-notes-${job.id}`}
+              className="mt-2 break-words whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-xs text-muted-foreground"
+            >
+              {job.notes}
+            </div>
+          </div>
+        )}
       </Card>
 
-      <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent className="max-w-2xl">
+      <Dialog
+        open={isEditing}
+        onOpenChange={(open) => {
+          if (open) {
+            setFormData(getFormData());
+            setError("");
+          }
+          setIsEditing(open);
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Job Application</DialogTitle>
-            <DialogDescription>Track a new job application</DialogDescription>
+            <DialogTitle>Edit Job Application</DialogTitle>
+            <DialogDescription>Update job application details</DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleUpdate}>
+            {error && (
+              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="company">Company *</Label>
                   <Input
@@ -203,7 +276,7 @@ export default function JobApplicationCard({
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
                   <Input
@@ -279,12 +352,61 @@ export default function JobApplicationCard({
                 type="button"
                 variant="outline"
                 onClick={() => setIsEditing(false)}
+                disabled={loading}
               >
                 Cancel
               </Button>
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : "Save Changes"}
+              </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) {
+            setIsDeleteConfirmOpen(false);
+            setDeleteError("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete application?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove {job.position} at {job.company} from
+              your board.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && (
+            <p role="alert" className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              {deleteError}
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsDeleteConfirmOpen(false);
+                setDeleteError("");
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete application"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

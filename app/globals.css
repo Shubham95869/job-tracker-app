@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
+@custom-variant moon (&:where(.moon, .moon *));
 
 @theme inline {
   --color-background: var(--background);
@@ -53,7 +54,7 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
   --primary: #f76382;
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0.2 0.03 350);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.145 0 0);
   --muted: oklch(0.97 0 0);
@@ -72,7 +73,7 @@
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: #f76382;
-  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-primary-foreground: oklch(0.2 0.03 350);
   --sidebar-accent: oklch(0.98 0.01 340);
   --sidebar-accent-foreground: #f76382;
   --sidebar-border: oklch(0.922 0 0);
@@ -113,6 +114,40 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+.moon {
+  --background: oklch(0.12 0.02 240);
+  --foreground: oklch(0.95 0.01 240);
+  --card: oklch(0.16 0.02 250);
+  --card-foreground: oklch(0.95 0.01 240);
+  --popover: oklch(0.16 0.02 250);
+  --popover-foreground: oklch(0.95 0.01 240);
+  --primary: oklch(0.65 0.15 280);
+  --primary-foreground: oklch(0.15 0.02 280);
+  --secondary: oklch(0.22 0.02 250);
+  --secondary-foreground: oklch(0.95 0.01 240);
+  --muted: oklch(0.22 0.02 250);
+  --muted-foreground: oklch(0.7 0.01 250);
+  --accent: oklch(0.28 0.03 270);
+  --accent-foreground: oklch(0.95 0.01 240);
+  --destructive: oklch(0.6 0.2 25);
+  --border: oklch(0.3 0.02 250 / 30%);
+  --input: oklch(0.3 0.02 250 / 20%);
+  --ring: oklch(0.65 0.15 280);
+  --chart-1: oklch(0.45 0.2 280);
+  --chart-2: oklch(0.55 0.15 220);
+  --chart-3: oklch(0.65 0.15 260);
+  --chart-4: oklch(0.5 0.18 300);
+  --chart-5: oklch(0.55 0.2 240);
+  --sidebar: oklch(0.16 0.02 250);
+  --sidebar-foreground: oklch(0.95 0.01 240);
+  --sidebar-primary: oklch(0.65 0.15 280);
+  --sidebar-primary-foreground: oklch(0.15 0.02 280);
+  --sidebar-accent: oklch(0.28 0.03 270);
+  --sidebar-accent-foreground: oklch(0.95 0.01 240);
+  --sidebar-border: oklch(0.3 0.02 250 / 30%);
+  --sidebar-ring: oklch(0.65 0.15 280);
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -121,11 +156,78 @@
   scrollbar-width: none;
 }
 
+.kanban-scroll {
+  scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin;
+}
+
+.kanban-column {
+  flex: 0 0 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .kanban-column {
+    flex-basis: calc((100% - 1rem) / 2);
+    width: calc((100% - 1rem) / 2);
+  }
+}
+
+@media (min-width: 1024px) {
+  .kanban-column {
+    flex-basis: calc((100% - 2rem) / 3);
+    width: calc((100% - 2rem) / 3);
+  }
+}
+
+@media (min-width: 1280px) {
+  .kanban-column {
+    flex-basis: calc((100% - 3rem) / 4);
+    width: calc((100% - 3rem) / 4);
+  }
+}
+
+@media (min-width: 1536px) {
+  .kanban-column {
+    flex-basis: calc((100% - 4rem) / 5);
+    width: calc((100% - 4rem) / 5);
+  }
+}
+
+.kanban-scroll::-webkit-scrollbar {
+  height: 0.5rem;
+}
+
+.kanban-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kanban-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: var(--border);
+}
+
+.kanban-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

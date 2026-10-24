@@ -1,12 +1,12 @@
 "use client";
 
-import { Board, Column, JobApplication, BoardOrNull } from "@/lib/models/models.types";
+import { Column, JobApplication, BoardOrNull } from "@/lib/models/models.types";
 import {
   Award,
+  ArrowLeftRight,
   Calendar,
   CheckCircle2,
   Mic,
-  MoreHorizontal,
   MoreVertical,
   Trash2,
   XCircle,
@@ -43,7 +43,6 @@ import { useState } from "react";
 
 interface KanbanBoardProps {
   board: BoardOrNull;
-  userId: string;
 }
 
 interface ColConfig {
@@ -52,23 +51,23 @@ interface ColConfig {
 }
 const COLUMN_CONFIG: Array<ColConfig> = [
   {
-    color: "bg-cyan-500",
+    color: "bg-cyan-700",
     icon: <Calendar className="h-4 w-4" />,
   },
   {
-    color: "bg-purple-500",
+    color: "bg-violet-700",
     icon: <CheckCircle2 className="h-4 w-4" />,
   },
   {
-    color: "bg-green-500",
+    color: "bg-emerald-700",
     icon: <Mic className="h-4 w-4" />,
   },
   {
-    color: "bg-yellow-500",
+    color: "bg-amber-700",
     icon: <Award className="h-4 w-4" />,
   },
   {
-    color: "bg-red-500",
+    color: "bg-rose-700",
     icon: <XCircle className="h-4 w-4" />,
   },
 ];
@@ -92,10 +91,11 @@ function DroppableColumn({
     },
   });
 
-  const sortedJobs =
-    column.jobApplications?.sort((a, b) => a.order - b.order) || [];
+  const sortedJobs = [...(column.jobApplications || [])].sort(
+    (a, b) => a.order - b.order
+  );
   return (
-    <Card className="min-w-[85vw] sm:min-w-[300px] flex-shrink-0 shadow-md p-0 snap-start">
+    <Card className="kanban-column snap-start p-0 shadow-md">
       <CardHeader
         className={`${config.color} text-white rounded-t-lg pb-3 pt-3`}
       >
@@ -107,11 +107,12 @@ function DroppableColumn({
             </CardTitle>
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger >
+            <DropdownMenuTrigger>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 text-white hover:bg-white/20"
+                className="h-9 w-9 text-white hover:bg-white/20"
+                aria-label={`Actions for ${column.name} column`}
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>
@@ -128,7 +129,7 @@ function DroppableColumn({
 
       <CardContent
         ref={setNodeRef}
-        className={`space-y-2 pt-4 bg-gray-50/50 min-h-[400px] rounded-b-lg ${
+        className={`min-h-[240px] space-y-2 rounded-b-lg bg-muted/50 pt-4 sm:min-h-[320px] lg:min-h-[400px] ${
           isOver ? "ring-2 ring-blue-500" : ""
         }`}
       >
@@ -136,9 +137,9 @@ function DroppableColumn({
           items={sortedJobs.map((job) => job.id)}
           strategy={verticalListSortingStrategy}
         >
-          {sortedJobs.map((job, key) => (
+          {sortedJobs.map((job) => (
             <SortableJobCard
-              key={key}
+              key={job.id}
               job={{ ...job, columnId: job.columnId || column.id }}
               columns={sortedColumns}
             />
@@ -189,22 +190,11 @@ function SortableJobCard({
   );
 }
 
-export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
+export default function KanbanBoard({ board }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const { columns, moveJob } = useBoard(board);
+  const { columns, error, moveJob } = useBoard(board);
 
-  const sortedColumns = columns?.sort((a, b) => a.order - b.order) || [];
-
-  if (!board) {
-    return (
-      <div className="min-h-screen bg-white">
-        <div className="container mx-auto p-6">
-          <p className="text-gray-600">Loading board...</p>
-        </div>
-      </div>
-    );
-  }
-
+  const sortedColumns = [...columns].sort((a, b) => a.order - b.order);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -212,6 +202,16 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
       },
     })
   );
+
+  if (!board) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto p-6">
+          <p className="text-muted-foreground">Loading board...</p>
+        </div>
+      </div>
+    );
+  }
 
   async function handleDragStart(event: DragStartEvent) {
     setActiveId(event.active.id as string);
@@ -233,7 +233,7 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
 
     for (const column of sortedColumns) {
       const jobs =
-        column.jobApplications.sort((a, b) => a.order - b.order) || [];
+        [...column.jobApplications].sort((a, b) => a.order - b.order);
       const jobIndex = jobs.findIndex((j) => j.id === activeId);
       if (jobIndex !== -1) {
         draggedJob = jobs[jobIndex];
@@ -256,10 +256,9 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
 
     if (targetColumn) {
       targetColumnId = targetColumn.id;
-      const jobsInTarget =
-        targetColumn.jobApplications
-          .filter((j) => j.id !== activeId)
-          .sort((a, b) => a.order - b.order) || [];
+      const jobsInTarget = [...targetColumn.jobApplications]
+        .filter((j) => j.id !== activeId)
+        .sort((a, b) => a.order - b.order);
       newOrder = jobsInTarget.length;
     } else if (targetJob) {
       const targetJobColumn = sortedColumns.find((col) =>
@@ -274,8 +273,9 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
 
       if (!targetColumnObj) return;
 
-      const allJobsInTargetOriginal =
-        targetColumnObj.jobApplications.sort((a, b) => a.order - b.order) || [];
+      const allJobsInTargetOriginal = [...targetColumnObj.jobApplications].sort(
+        (a, b) => a.order - b.order
+      );
 
       const allJobsInTargetFiltered =
         allJobsInTargetOriginal.filter((j) => j.id !== activeId) || [];
@@ -317,21 +317,37 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
     .find((job) => job.id === activeId);
   return (
     <DndContext
+      id={`DndDescribedBy-${board.id}`}
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="space-y-4">
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar snap-x snap-mandatory">
+      <div className="min-w-0 space-y-3">
+        {error && (
+          <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <ArrowLeftRight aria-hidden="true" className="size-4 shrink-0" />
+          <span className="sm:hidden">Swipe horizontally to view every stage.</span>
+          <span className="hidden sm:inline">Scroll horizontally to view every stage.</span>
+        </p>
+        <div
+          role="region"
+          aria-label="Application stages"
+          tabIndex={0}
+          className="kanban-scroll min-w-0 w-full flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4"
+        >
           {sortedColumns.map((col, key) => {
             const config = COLUMN_CONFIG[key] || {
-              color: "bg-gray-500",
+              color: "bg-slate-700",
               icon: <Calendar className="h-4 w-4" />,
             };
             return (
               <DroppableColumn
-                key={key}
+                key={col.id}
                 column={col}
                 config={config}
                 boardId={board!.id}

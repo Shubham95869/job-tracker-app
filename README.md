@@ -8,7 +8,7 @@ A full-stack job application tracking system built with Next.js, featuring a Kan
 - **Language**: TypeScript
 - **UI Library**: React 19
 - **Styling**: Tailwind CSS 4
-- **Database**: MongoDB with Mongoose
+- **Database**: PostgreSQL with Prisma ORM
 - **Authentication**: Better Auth
 - **Drag & Drop**: dnd-kit
 - **UI Components**: Base UI
@@ -19,7 +19,7 @@ A full-stack job application tracking system built with Next.js, featuring a Kan
 ### Prerequisites
 
 - Node.js 18+ installed
-- MongoDB database (local or cloud)
+- PostgreSQL database (local or cloud)
 - npm, yarn, pnpm, or bun
 
 ### Installation
@@ -37,10 +37,10 @@ cd job-application-tracker
 npm install
 ```
 
-3. Create a `.env.local` file in the root directory:
+3. Create a `.env.local` file in the root directory and set the database connection string:
 
 ```env
-MONGODB_URI=your_mongodb_connection_string
+DATABASE_URL=your_postgresql_connection_string
 ```
 
 4. Run the development server:

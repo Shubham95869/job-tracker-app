@@ -39,9 +39,13 @@ export default function CreateJobApplicationDialog({
 }: CreateJobApplicationDialogProps) {
   const [open, setOpen] = useState<boolean>(false);
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
       const result = await createJobApplication({
@@ -58,10 +62,12 @@ export default function CreateJobApplicationDialog({
         setFormData(INITIAL_FORM_DATA);
         setOpen(false);
       } else {
-        console.error("Failed to create job: ", result.error);
+        setError(result.error || "Failed to create job application");
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setError("An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -76,14 +82,19 @@ export default function CreateJobApplicationDialog({
           Add Job
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Job Application</DialogTitle>
           <DialogDescription>Track a new job application</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit}>
+          {error && (
+            <div role="alert" className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="company">Company *</Label>
                 <Input
@@ -107,7 +118,7 @@ export default function CreateJobApplicationDialog({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
                 <Input
@@ -183,10 +194,13 @@ export default function CreateJobApplicationDialog({
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
+              disabled={loading}
             >
               Cancel
             </Button>
-            <Button type="submit">Add Application</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Adding..." : "Add Application"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

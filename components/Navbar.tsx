@@ -2,51 +2,74 @@
 
 import { Briefcase, Menu, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import { Button } from "./ui/button";
+import { useRef, useState } from "react";
+import { Button, buttonVariants } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import SignOutButton from "./sign-out-btn";
 import { useSession } from "@/lib/auth/auth-client";
+import { ThemeToggle } from "./theme-toggle";
 
 export default function Navbar() {
   const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  function closeMobileMenu() {
+    setMobileOpen(false);
+  }
 
   return (
-    <nav className="border-b border-gray-200 bg-white">
-      <div className="container mx-auto flex h-16 items-center px-4 justify-between">
+    <nav
+      aria-label="Primary"
+      className="border-b border-border bg-background text-foreground"
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && mobileOpen) {
+          closeMobileMenu();
+          menuButtonRef.current?.focus();
+        }
+      }}
+    >
+      <div className="container mx-auto flex h-16 min-w-0 items-center justify-between gap-3 px-4">
         <Link
           href="/"
-          className="flex items-center gap-2 text-lg md:text-xl font-semibold text-primary"
+          className="flex min-w-0 shrink-0 items-center gap-2 text-lg font-semibold text-primary md:text-xl"
+          onClick={closeMobileMenu}
         >
-          <Briefcase />
-          Job Tracker
+          <Briefcase aria-hidden="true" className="size-5 shrink-0" />
+          <span className="truncate">Job Tracker</span>
         </Link>
 
-        {/* Desktop nav — hidden below md */}
-        <div className="hidden md:flex items-center gap-4">
-            
+        <div className="hidden shrink-0 items-center gap-4 md:flex">
+          <ThemeToggle />
           {session?.user ? (
             <>
-              <Link href="/dashboard">
-                <Button variant="ghost" className="text-gray-700 hover:text-black">
-                  Dashboard
-                </Button>
+              <Link
+                href="/dashboard"
+                className={buttonVariants({
+                  variant: "ghost",
+                  className: "text-foreground",
+                })}
+              >
+                Dashboard
               </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Button
+                    variant="ghost"
+                    className="relative h-9 w-9 rounded-full"
+                    aria-label="Open account menu"
+                  >
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary text-white">
-                        {session.user.name[0].toUpperCase()}
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {session.user.name?.trim().charAt(0).toUpperCase() ||
+                          session.user.email.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -54,11 +77,11 @@ export default function Navbar() {
                 <DropdownMenuContent className="w-56" align="end">
                   <DropdownMenuGroup>
                     <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {session.user.name}
+                      <div className="flex min-w-0 flex-col space-y-1">
+                        <p className="truncate text-sm font-medium leading-none">
+                          {session.user.name || "Account"}
                         </p>
-                        <p className="text-xs leading-none text-muted-foreground">
+                        <p className="truncate text-xs leading-none text-muted-foreground">
                           {session.user.email}
                         </p>
                       </div>
@@ -70,63 +93,98 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/sign-in">
-                <Button variant="ghost" className="text-gray-700 hover:text-black">
-                  Log In
-                </Button>
+              <Link
+                href="/sign-in"
+                className={buttonVariants({
+                  variant: "ghost",
+                  className: "text-foreground",
+                })}
+              >
+                Log In
               </Link>
-              <Link href="/sign-up">
-                <Button className="bg-primary hover:bg-primary/90">
-                  Start for free
-                </Button>
+              <Link href="/sign-up" className={buttonVariants()}>
+                Start for free
               </Link>
             </>
           )}
         </div>
 
-        {/* Mobile hamburger — hidden at md and above */}
-        <button
-          className="md:hidden p-2"
-          onClick={() => setMobileOpen((v) => !v)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
-      </div>
-
-      {/* Mobile dropdown panel */}
-
-{mobileOpen && (
-  <div className="md:hidden border-t border-gray-200 bg-white px-4 py-3 space-y-2">
-    {session?.user ? (
-      <div className="rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10">
-        <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{session.user.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
-          </div>
+        <div className="flex shrink-0 items-center gap-1 md:hidden">
+          <ThemeToggle />
+          <button
+            ref={menuButtonRef}
+            type="button"
+            className="inline-flex size-11 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            onClick={() => setMobileOpen((open) => !open)}
+            aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-navigation"
+          >
+            {mobileOpen ? (
+              <X aria-hidden="true" className="size-5" />
+            ) : (
+              <Menu aria-hidden="true" className="size-5" />
+            )}
+          </button>
         </div>
-
-        <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
-          <div className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm hover:bg-accent hover:text-accent-foreground">
-            Dashboard
-          </div>
-        </Link>
-
-        <SignOutButton asMenuItem={false} />
       </div>
-    ) : (
-      <>
-        <Link href="/sign-in" onClick={() => setMobileOpen(false)}>
-          <Button variant="ghost" className="w-full justify-start">Log In</Button>
-        </Link>
-        <Link href="/sign-up" onClick={() => setMobileOpen(false)}>
-          <Button className="w-full bg-primary hover:bg-primary/90">Start for free</Button>
-        </Link>
-      </>
-    )}
-  </div>
-)}
+
+      <div
+        id="mobile-navigation"
+        hidden={!mobileOpen}
+        className="border-t border-border bg-background px-4 py-3 md:hidden"
+      >
+        <div className="container mx-auto grid gap-2">
+          {session?.user ? (
+            <>
+              <div className="min-w-0 px-2 py-1">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {session.user.name || "Account"}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {session.user.email}
+                </p>
+              </div>
+              <Link
+                href="/dashboard"
+                onClick={closeMobileMenu}
+                className={buttonVariants({
+                  variant: "ghost",
+                  className: "h-11 w-full justify-start",
+                })}
+              >
+                Dashboard
+              </Link>
+              <SignOutButton
+                asMenuItem={false}
+                className="min-h-11 cursor-pointer px-2.5 text-left"
+              />
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <Link
+                href="/sign-in"
+                onClick={closeMobileMenu}
+                className={buttonVariants({
+                  variant: "outline",
+                  className: "h-11 w-full",
+                })}
+              >
+                Log In
+              </Link>
+              <Link
+                href="/sign-up"
+                onClick={closeMobileMenu}
+                className={buttonVariants({
+                  className: "h-11 w-full",
+                })}
+              >
+                Start for free
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
     </nav>
   );
 }
